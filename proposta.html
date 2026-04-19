@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Proposta de Investimento — Captor v5.3.1</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{
+  --bg:#f5f6f8;--bg2:#fff;--bg3:#f0f2f5;--border:#e2e5ea;
+  --text:#111827;--muted:#6b7280;--dim:#9ca3af;
+  --accent:#a8c23a;--accent2:#8aaa1e;--accent-dim:rgba(168,194,58,.1);--accent-rgb:168,194,58;
+  --gold:#d97706;--r:10px;--rl:16px;
+  --f:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+  --shadow:0 1px 3px rgba(0,0,0,.06);--shadow-md:0 4px 12px rgba(0,0,0,.08);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{font-family:var(--f);background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased;font-size:16px;line-height:1.6}
+#readProgress{position:fixed;top:0;left:0;height:3px;background:var(--accent);z-index:999;width:0%;transition:width .1s linear;border-radius:0 2px 2px 0}
+.state-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:16px;text-align:center;padding:40px;background:var(--bg2)}
+.state-icon{font-size:3rem;margin-bottom:4px}
+.state-title{font-size:1.3rem;font-weight:700}
+.state-sub{font-size:.9rem;color:var(--muted);max-width:340px;line-height:1.65}
+.spinner{width:40px;height:40px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.prop-header{background:var(--bg2);border-bottom:1px solid var(--border);padding:14px 0;position:sticky;top:0;z-index:50;box-shadow:var(--shadow)}
+.prop-header-inner{max-width:800px;margin:0 auto;padding:0 28px;display:flex;align-items:center;justify-content:space-between;gap:16px}
+.prop-logo{font-size:1.15rem;font-weight:800;color:var(--text);letter-spacing:-.025em}
+.prop-logo .dot{color:var(--accent)}
+.prop-company-name{font-size:.72rem;color:var(--muted);margin-top:2px}
+.header-actions{display:flex;align-items:center;gap:8px}
+.print-btn{padding:7px 14px;background:transparent;border:1px solid var(--border);border-radius:var(--r);color:var(--muted);font-family:var(--f);font-size:.74rem;cursor:pointer;display:flex;align-items:center;gap:5px;transition:all .2s}
+.print-btn:hover{border-color:var(--accent);color:var(--accent)}
+.status-pill{padding:4px 10px;border-radius:20px;font-size:.67rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase}
+.status-enviada{background:rgba(107,114,128,.1);color:var(--muted)}
+.status-visualizada{background:rgba(59,130,246,.1);color:#3b82f6}
+.status-aceita{background:var(--accent-dim);color:var(--accent2)}
+.status-em_discussao,.status-detalhes_solicitados{background:rgba(217,119,6,.1);color:var(--gold)}
+.prop-hero{background:linear-gradient(150deg,#0f172a 0%,#1e293b 60%,#0f2027 100%);color:#fff;padding:60px 0 52px;position:relative;overflow:hidden}
+.prop-hero::before{content:'';position:absolute;top:-40px;right:-60px;width:320px;height:320px;border-radius:50%;background:radial-gradient(circle,rgba(var(--accent-rgb),.12) 0%,transparent 70%);pointer-events:none}
+.prop-hero-inner{max-width:800px;margin:0 auto;padding:0 28px;position:relative;z-index:1}
+.prop-tag{display:inline-flex;align-items:center;gap:6px;background:rgba(var(--accent-rgb),.15);border:1px solid rgba(var(--accent-rgb),.3);color:var(--accent);font-size:.67rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;padding:4px 12px;border-radius:20px;margin-bottom:20px}
+.prop-hero-greeting{font-size:.9rem;color:rgba(255,255,255,.5);margin-bottom:6px}
+.prop-hero-name{font-size:2.4rem;font-weight:800;letter-spacing:-.04em;line-height:1.1;margin-bottom:10px}
+.prop-hero-meta{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px}
+.hero-badge{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);border-radius:6px;padding:4px 10px;font-size:.74rem;color:rgba(255,255,255,.7)}
+.hero-badge strong{color:#fff;font-weight:600}
+.prop-hero-summary{font-size:1rem;color:rgba(255,255,255,.8);line-height:1.8;max-width:600px;margin-bottom:20px}
+.prop-expires{display:inline-flex;align-items:center;gap:6px;font-size:.72rem;color:rgba(255,255,255,.45)}
+.prop-expires.expired{color:#fbbf24}
+.prop-main{max-width:800px;margin:0 auto;padding:32px 28px 140px}
+.prop-section{background:var(--bg2);border:1px solid var(--border);border-radius:var(--rl);margin-bottom:16px;overflow:hidden;box-shadow:var(--shadow)}
+.prop-section-header{display:flex;align-items:flex-start;gap:12px;padding:22px 24px 18px}
+.prop-section-icon{width:36px;height:36px;border-radius:9px;background:var(--accent-dim);display:flex;align-items:center;justify-content:center;font-size:1rem;flex-shrink:0}
+.prop-section-title{font-size:1rem;font-weight:700;color:var(--text);letter-spacing:-.01em}
+.prop-section-sub{font-size:.76rem;color:var(--muted);margin-top:2px;line-height:1.5}
+.prop-section-body{padding:0 24px 22px}
+.profile-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px}
+.profile-card{background:var(--bg3);border-radius:var(--r);padding:14px 16px;border:1px solid var(--border)}
+.profile-card-label{font-size:.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--dim);margin-bottom:5px}
+.profile-card-value{font-size:.92rem;font-weight:600;color:var(--text);line-height:1.3}
+.profile-card.hi{background:var(--accent-dim);border-color:rgba(var(--accent-rgb),.25)}
+.profile-card.hi .profile-card-label{color:var(--accent2)}
+.profile-card.hi .profile-card-value{color:var(--accent2)}
+.alloc-compare{display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start}
+.alloc-compare.single{grid-template-columns:1fr;max-width:340px}
+.alloc-box-title{font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);margin-bottom:12px;text-align:center}
+.benefit-list{display:flex;flex-direction:column;gap:0}
+.benefit-item{display:flex;gap:14px;padding:16px 0;border-bottom:1px solid var(--border)}
+.benefit-item:last-child{border-bottom:none;padding-bottom:0}
+.benefit-item:first-child{padding-top:0}
+.benefit-num{width:28px;height:28px;border-radius:50%;background:var(--accent);color:#1a1a1a;font-size:.72rem;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px}
+.benefit-body strong{display:block;font-size:.92rem;font-weight:700;color:var(--text);margin-bottom:4px}
+.benefit-body p{font-size:.86rem;color:var(--muted);line-height:1.7}
+.benefit-hook{display:inline-block;margin-top:8px;font-size:.8rem;color:var(--gold);background:rgba(217,119,6,.08);border-left:2px solid var(--gold);padding:5px 10px;border-radius:0 5px 5px 0;font-style:italic}
+.disclaimer{background:var(--bg3);border-radius:var(--r);padding:14px 16px;font-size:.72rem;color:var(--dim);line-height:1.7;margin-top:20px;border:1px solid var(--border)}
+.disclaimer strong{color:var(--muted)}
+.projection-wrap{background:var(--bg3);border-radius:var(--r);padding:16px;border:1px solid var(--border)}
+.impl-steps{display:flex;flex-direction:column;position:relative}
+.impl-steps::before{content:'';position:absolute;left:13px;top:14px;bottom:14px;width:2px;background:var(--border);z-index:0}
+.impl-step{display:flex;gap:16px;padding:14px 0;position:relative;z-index:1}
+.impl-step:last-child{padding-bottom:0}
+.impl-num{width:28px;height:28px;border-radius:50%;background:var(--accent);color:#1a1a1a;font-size:.72rem;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 0 0 4px var(--bg2)}
+.impl-content{padding-top:3px}
+.impl-content strong{display:block;font-size:.9rem;font-weight:700;color:var(--text);margin-bottom:3px}
+.impl-content p{font-size:.82rem;color:var(--muted);line-height:1.6}
+.contact-card{display:flex;align-items:center;gap:16px;background:var(--bg3);border-radius:var(--r);padding:16px 18px;border:1px solid var(--border)}
+.contact-avatar{width:44px;height:44px;border-radius:50%;background:var(--accent);color:#1a1a1a;font-size:1.1rem;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.contact-name{font-size:.92rem;font-weight:700;color:var(--text)}
+.contact-role{font-size:.74rem;color:var(--muted);margin-top:2px}
+.contact-company{font-size:.74rem;color:var(--accent2);margin-top:1px;font-weight:600}
+.expired-banner{background:#fffbeb;border:1px solid #fde68a;border-radius:var(--r);padding:12px 16px;font-size:.82rem;color:#92400e;margin-bottom:16px;display:flex;align-items:center;gap:8px}
+.comment-wrap{margin-top:18px;padding-top:16px;border-top:1px solid var(--border)}
+.comment-toggle{display:inline-flex;align-items:center;gap:6px;background:transparent;border:1px solid var(--border);border-radius:20px;padding:6px 14px;color:var(--muted);font-family:var(--f);font-size:.74rem;cursor:pointer;transition:all .2s}
+.comment-toggle:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-dim)}
+.comment-area{margin-top:10px;display:none}
+.comment-area.open{display:block}
+.comment-input{width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:11px 14px;font-family:var(--f);font-size:.84rem;color:var(--text);resize:vertical;min-height:80px;outline:none;transition:border-color .2s;line-height:1.5}
+.comment-input:focus{border-color:var(--accent);background:var(--bg2)}
+.comment-footer{display:flex;align-items:center;justify-content:space-between;margin-top:8px}
+.comment-hint{font-size:.7rem;color:var(--dim)}
+.comment-send{padding:8px 18px;background:var(--accent);color:#1a1a1a;border:none;border-radius:var(--r);font-family:var(--f);font-size:.78rem;font-weight:700;cursor:pointer}
+.comment-send:hover{background:var(--accent2)}
+.comment-sent{font-size:.78rem;color:var(--accent2);margin-top:8px;display:none;font-weight:600}
+.prop-footer-sticky{position:fixed;bottom:0;left:0;right:0;background:rgba(255,255,255,.96);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-top:1px solid var(--border);padding:14px 28px;z-index:100;box-shadow:0 -4px 24px rgba(0,0,0,.08)}
+.prop-footer-inner{max-width:800px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.prop-footer-label{font-size:.78rem;color:var(--muted);font-weight:500}
+.prop-footer-label.done{color:var(--accent2);font-weight:700}
+.prop-action-btns{display:flex;gap:8px;flex-wrap:wrap}
+.pabtn{padding:10px 20px;border-radius:var(--r);font-family:var(--f);font-size:.8rem;font-weight:700;cursor:pointer;border:none;transition:all .2s;white-space:nowrap}
+.pabtn-accept{background:var(--accent);color:#1a1a1a;box-shadow:0 2px 8px rgba(var(--accent-rgb),.3)}
+.pabtn-accept:hover{background:var(--accent2);transform:translateY(-1px)}
+.pabtn-accept:disabled{opacity:.5;cursor:not-allowed;transform:none}
+.pabtn-sec{background:transparent;border:1.5px solid var(--border);color:var(--muted)}
+.pabtn-sec:hover{border-color:var(--accent);color:var(--accent)}
+.pabtn-share{background:transparent;border:1.5px solid var(--border);color:var(--muted)}
+.pabtn-share:hover{border-color:var(--text);color:var(--text)}
+.action-modal-overlay{position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.5);display:flex;align-items:flex-end;justify-content:center;backdrop-filter:blur(4px)}
+.action-modal{background:var(--bg2);border-radius:var(--rl) var(--rl) 0 0;width:100%;max-width:800px;padding:28px;box-shadow:0 -8px 40px rgba(0,0,0,.15)}
+.modal-handle{width:36px;height:4px;border-radius:2px;background:var(--border);margin:0 auto 20px}
+.action-modal-icon{font-size:1.8rem;margin-bottom:10px}
+.action-modal-title{font-size:1.05rem;font-weight:700;margin-bottom:5px}
+.action-modal-sub{font-size:.82rem;color:var(--muted);margin-bottom:16px;line-height:1.55}
+.action-modal textarea{width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:12px 14px;font-family:var(--f);font-size:.86rem;color:var(--text);resize:vertical;min-height:90px;outline:none;line-height:1.5}
+.action-modal textarea:focus{border-color:var(--accent)}
+.action-modal-btns{display:flex;gap:8px;margin-top:12px;justify-content:flex-end}
+.am-cancel{padding:9px 18px;background:transparent;border:1.5px solid var(--border);border-radius:var(--r);font-family:var(--f);font-size:.8rem;cursor:pointer;color:var(--muted);font-weight:600}
+.am-confirm{padding:9px 20px;background:var(--accent);border:none;border-radius:var(--r);font-family:var(--f);font-size:.8rem;font-weight:700;cursor:pointer;color:#1a1a1a}
+.am-confirm:disabled{opacity:.5;cursor:not-allowed}
+.sdr-bar{background:#1a1a2e;border-bottom:2px solid var(--accent);padding:12px 0;position:sticky;top:0;z-index:60}
+.sdr-bar-inner{max-width:800px;margin:0 auto;padding:0 28px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.sdr-badge{background:var(--accent);color:#1a1a1a;font-size:.65rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase;padding:3px 8px;border-radius:4px}
+.sdr-hint{font-size:.76rem;color:rgba(255,255,255,.7);flex:1}
+.sdr-approve-btn{padding:8px 18px;background:var(--accent);color:#1a1a1a;border:none;border-radius:var(--r);font-family:var(--f);font-size:.8rem;font-weight:700;cursor:pointer;transition:all .2s;white-space:nowrap}
+.sdr-approve-btn:hover{background:var(--accent2)}
+.sdr-approve-btn.done{background:rgba(168,194,58,.15);border:1px solid var(--accent);color:var(--accent);cursor:default}
+@media print{.sdr-bar{display:none!important}}
+
+.prop-legal-inner{max-width:800px;margin:0 auto}
+.prop-legal p{font-size:.7rem;color:var(--dim);line-height:1.7;margin-bottom:4px}
+.prop-legal strong{color:var(--muted)}
+
+/* FEEDBACK */
+.feedback-section{max-width:800px;margin:0 auto;padding:0 28px 32px}
+.feedback-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--rl);padding:24px;text-align:center}
+.feedback-title{font-size:.95rem;font-weight:700;color:var(--text);margin-bottom:4px}
+.feedback-sub{font-size:.78rem;color:var(--muted);margin-bottom:18px}
+.stars-row{display:flex;justify-content:center;gap:8px;margin-bottom:14px}
+.star-btn{background:transparent;border:none;font-size:2rem;cursor:pointer;transition:transform .15s;line-height:1;color:#d1d5db}
+.star-btn:hover,.star-btn.active{color:#fbbf24;transform:scale(1.15)}
+.feedback-comment{width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:10px 12px;font-family:var(--f);font-size:.84rem;color:var(--text);resize:vertical;min-height:68px;outline:none;transition:border-color .2s;line-height:1.5;margin-bottom:10px}
+.feedback-comment:focus{border-color:var(--accent)}
+.feedback-submit{padding:9px 24px;background:var(--accent);color:#1a1a1a;border:none;border-radius:var(--r);font-family:var(--f);font-size:.82rem;font-weight:700;cursor:pointer;transition:all .2s}
+.feedback-submit:hover{background:var(--accent2)}
+.feedback-submit:disabled{opacity:.4;cursor:not-allowed}
+.feedback-done{font-size:.86rem;color:var(--accent2);font-weight:600;margin-top:8px;display:none}
+@media print{.feedback-section{display:none!important}}
+@media print{
+  #readProgress,.prop-header,.prop-footer-sticky,.print-btn,.comment-wrap,.action-modal-overlay{display:none!important}
+  body{background:#fff;font-size:12px}
+  .prop-hero{background:#0f172a!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;padding:40px 0 32px}
+  .prop-main{padding:20px 28px 40px}
+  .prop-section{box-shadow:none;break-inside:avoid;margin-bottom:12px}
+}
+@media(max-width:640px){
+  .prop-hero-name{font-size:1.8rem}
+  .prop-main{padding:20px 16px 140px}
+  .prop-section-body,.prop-section-header{padding-left:16px;padding-right:16px}
+  .alloc-compare{grid-template-columns:1fr}
+  .profile-grid{grid-template-columns:1fr 1fr}
+  .prop-footer-sticky{padding:12px 16px}
+  .prop-footer-inner{flex-direction:column;align-items:stretch;gap:8px}
+  .prop-action-btns{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+  .pabtn-accept{grid-column:1/-1}
+}
+</style>
+</head>
+<body>
+<div id="readProgress"></div>
+<div id="loadingScreen" class="state-screen">
+  <div class="spinner"></div>
+  <div class="state-title">Carregando sua proposta</div>
+  <div class="state-sub">Buscando as informações preparadas especialmente para você</div>
+</div>
+<div id="errorScreen" class="state-screen" style="display:none">
+  <div class="state-icon">🔍</div>
+  <div class="state-title" id="errorTitle">Proposta não encontrada</div>
+  <div class="state-sub" id="errorSub">Este link pode ter expirado ou sido removido. Entre em contato com seu assessor.</div>
+</div>
+<div id="propContent" style="display:none">
+  <!-- SDR BAR (visível apenas para assessores logados) -->
+  <div id="sdrBar" style="display:none" class="sdr-bar">
+    <div class="sdr-bar-inner">
+      <span class="sdr-hint" id="sdrHint">Revise a proposta como o cliente vai ver. Clique em Aprovar para liberar a publicação.</span>
+      <button class="sdr-approve-btn" id="sdrApproveBtn" onclick="sdrApprove()">✓ Aprovar proposta</button>
+    </div>
+  </div>
+
+  <header class="prop-header">
+    <div class="prop-header-inner">
+      <div>
+        <div class="prop-logo" id="headerLogo">captor<span class="dot">.</span></div>
+        <div class="prop-company-name" id="headerCompany"></div>
+      </div>
+      <div class="header-actions">
+        <span class="status-pill" id="statusPill"></span>
+        <button class="print-btn" onclick="window.print()">🖨 Imprimir</button>
+      </div>
+    </div>
+  </header>
+  <section class="prop-hero">
+    <div class="prop-hero-inner">
+      <div class="prop-tag">● Proposta de Investimento</div>
+      <div class="prop-hero-greeting" id="heroGreeting"></div>
+      <div class="prop-hero-name" id="heroName"></div>
+      <div class="prop-hero-meta" id="heroMeta"></div>
+      <div class="prop-hero-summary" id="heroSummary"></div>
+      <div class="prop-expires" id="heroExpires"></div>
+    </div>
+  </section>
+  <main class="prop-main">
+    <div id="expiredBanner" style="display:none" class="expired-banner">⚠ Esta proposta expirou. Entre em contato com seu assessor para uma versão atualizada.</div>
+    <div class="prop-section">
+      <div class="prop-section-header">
+        <div class="prop-section-icon">👤</div>
+        <div><div class="prop-section-title">Perfil e Objetivos do cliente</div><div class="prop-section-sub">Dados utilizados para personalizar esta proposta</div></div>
+      </div>
+      <div class="prop-section-body">
+        <div class="profile-grid" id="profileGrid"></div>
+        <div class="comment-wrap">
+          <button class="comment-toggle" onclick="toggleComment('comment-perfil')">💬 Algum dado incorreto ou dúvida?</button>
+          <div class="comment-area" id="comment-perfil">
+            <textarea class="comment-input" placeholder="Ex: Meu perfil de risco mudou, ou tenho mais patrimônio para informar..."></textarea>
+            <div class="comment-footer"><span class="comment-hint">Seu assessor receberá este comentário</span><button class="comment-send" onclick="sendComment('perfil',this)">Enviar</button></div>
+            <div class="comment-sent">✓ Enviado! Seu assessor responderá em breve.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="prop-section" id="sectionAtual" style="display:none">
+    </div>
+    <div class="prop-section">
+      <div class="prop-section-header">
+        <div class="prop-section-icon">🎯</div>
+        <div><div class="prop-section-title">Proposta de Alocação</div><div class="prop-section-sub" id="allocSub">Como recomendamos organizar seus investimentos</div></div>
+      </div>
+      <div class="prop-section-body">
+        <div id="chartCompare"></div>
+        <div class="comment-wrap">
+          <button class="comment-toggle" onclick="toggleComment('comment-alocacao')">💬 Dúvida sobre essa alocação?</button>
+          <div class="comment-area" id="comment-alocacao">
+            <textarea class="comment-input" placeholder="Ex: Por que tanto em renda fixa? Posso ter mais em renda variável?"></textarea>
+            <div class="comment-footer"><span class="comment-hint">Seu assessor receberá este comentário</span><button class="comment-send" onclick="sendComment('alocacao',this)">Enviar</button></div>
+            <div class="comment-sent">✓ Enviado!</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="prop-section">
+      <div class="prop-section-header">
+        <div class="prop-section-icon">✨</div>
+        <div><div class="prop-section-title">Por que faz sentido para você</div><div class="prop-section-sub">Os argumentos por trás desta proposta, sem jargão</div></div>
+      </div>
+      <div class="prop-section-body">
+        <div class="benefit-list" id="benefitsList"></div>
+        <div class="disclaimer"><strong>⚖ Nota regulatória (ANBIMA / CVM):</strong> Esta proposta tem caráter informativo e educacional, elaborada com base nos dados fornecidos. Não constitui recomendação de investimento individualizada nos termos da Resolução CVM nº 20/2021. Rentabilidade passada não é garantia de rentabilidade futura. Todo investimento envolve riscos, incluindo a possível perda do capital investido.</div>
+        <div class="comment-wrap">
+          <button class="comment-toggle" onclick="toggleComment('comment-beneficios')">💬 Ficou alguma dúvida?</button>
+          <div class="comment-area" id="comment-beneficios">
+            <textarea class="comment-input" placeholder="Pergunte sobre qualquer argumento apresentado..."></textarea>
+            <div class="comment-footer"><span class="comment-hint">Seu assessor receberá este comentário</span><button class="comment-send" onclick="sendComment('beneficios',this)">Enviar</button></div>
+            <div class="comment-sent">✓ Enviado!</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="prop-section">
+      <div class="prop-section-header">
+        <div class="prop-section-icon">📈</div>
+        <div><div class="prop-section-title">Projeção Patrimonial</div><div class="prop-section-sub">Uma estimativa do potencial do seu patrimônio nos próximos 10 anos</div></div>
+      </div>
+      <div class="prop-section-body">
+        <div class="projection-wrap" id="chartProjecao"></div>
+        <div class="comment-wrap">
+          <button class="comment-toggle" onclick="toggleComment('comment-projecao')">💬 Dúvida sobre a projeção?</button>
+          <div class="comment-area" id="comment-projecao">
+            <textarea class="comment-input" placeholder="Ex: Esses números consideram aportes mensais? Como a taxa foi calculada?"></textarea>
+            <div class="comment-footer"><span class="comment-hint">Seu assessor receberá este comentário</span><button class="comment-send" onclick="sendComment('projecao',this)">Enviar</button></div>
+            <div class="comment-sent">✓ Enviado!</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="prop-section">
+      <div class="prop-section-header">
+        <div class="prop-section-icon">🚀</div>
+        <div><div class="prop-section-title">Próximos Passos</div><div class="prop-section-sub">O que acontece depois que você aprovar esta proposta</div></div>
+      </div>
+      <div class="prop-section-body">
+        <div style="background:var(--bg3);border-radius:var(--r);border:1px solid var(--border);padding:20px 24px;font-size:.92rem;color:var(--text);line-height:1.75">
+          Assim que você não tiver mais dúvidas, é só aprovar esta proposta e enviaremos os documentos necessários para abrir a conta conosco.
+        </div>
+      </div>
+    </div>
+    <div class="prop-section">
+      <div class="prop-section-header">
+        <div class="prop-section-icon">📞</div>
+        <div><div class="prop-section-title">Fale com seu assessor</div><div class="prop-section-sub">Estamos prontos para responder qualquer dúvida</div></div>
+      </div>
+      <div class="prop-section-body"><div class="contact-card" id="contactCard"></div></div>
+    </div>
+  </main>
+  <!-- FEEDBACK -->
+  <div class="feedback-section" id="feedbackSection" style="display:none">
+    <div class="feedback-card">
+      <div class="feedback-title">O que você achou desta proposta?</div>
+      <div class="feedback-sub">Sua opinião ajuda a melhorar o atendimento</div>
+      <div class="stars-row" id="starsRow">
+        <button class="star-btn" data-v="1" onclick="setRating(1)">★</button>
+        <button class="star-btn" data-v="2" onclick="setRating(2)">★</button>
+        <button class="star-btn" data-v="3" onclick="setRating(3)">★</button>
+        <button class="star-btn" data-v="4" onclick="setRating(4)">★</button>
+        <button class="star-btn" data-v="5" onclick="setRating(5)">★</button>
+      </div>
+      <textarea class="feedback-comment" id="feedbackText" placeholder="Comentário opcional — o que poderia ser melhor?"></textarea>
+      <br>
+      <button class="feedback-submit" id="feedbackSubmit" onclick="submitFeedback()" disabled>Enviar avaliação</button>
+      <div class="feedback-done" id="feedbackDone">✓ Obrigado pelo seu feedback!</div>
+    </div>
+  </div>
+
+  <footer class="prop-legal">
+    <div class="prop-legal-inner">
+      <p>Proposta gerada pela plataforma <strong>Captor</strong> v5.3.1 · <span id="legalCompany"></span></p>
+      <p>Elaborada em <span id="legalDate"></span> · Válida por 30 dias</p>
+    </div>
+  </footer>
+  <div id="actionModal" class="action-modal-overlay" style="display:none" onclick="if(event.target===this)closeActionModal()">
+    <div class="action-modal">
+      <div class="modal-handle"></div>
+      <div class="action-modal-icon" id="modalIcon"></div>
+      <div class="action-modal-title" id="modalTitle"></div>
+      <div class="action-modal-sub" id="modalSub"></div>
+      <textarea id="modalText" placeholder=""></textarea>
+      <div class="action-modal-btns">
+        <button class="am-cancel" onclick="closeActionModal()">Cancelar</button>
+        <button class="am-confirm" id="modalConfirm" onclick="confirmAction()">Confirmar</button>
+      </div>
+    </div>
+  </div>
+  <div class="prop-footer-sticky">
+    <div class="prop-footer-inner">
+      <div class="prop-footer-label" id="footerLabel">O que você gostaria de fazer?</div>
+      <div class="prop-action-btns">
+        <button class="pabtn pabtn-accept" id="btnAccept" onclick="handleAction('aceita')">✅ Aceitar Proposta</button>
+        <button class="pabtn pabtn-sec" onclick="handleAction('detalhes_solicitados')">💬 Dúvidas</button>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+var SUPABASE_URL='https://fllkczocfcbrfsyhxelg.supabase.co';
+var SUPABASE_KEY='sb_publishable_U2pVXIhyNH3s085cUjAmrA_PkeNP4P7';
+var sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+var proposal=null,currentAction=null,isExpired=false,isSdr=false;
+window.addEventListener('scroll',function(){var h=document.documentElement.scrollHeight-window.innerHeight;document.getElementById('readProgress').style.width=(h>0?(window.scrollY/h*100):0)+'%';});
+var statusLabels={rascunho:'Rascunho',enviada:'Enviada',visualizada:'Visualizada',aceita:'Aceita',em_discussao:'Em discussão',detalhes_solicitados:'Detalhes solicitados',aprovado_sdr:'Aprovado'};
+function renderStatusPill(s){var p=document.getElementById('statusPill');p.textContent=statusLabels[s]||s;p.className='status-pill status-'+s;}
+(async function(){
+  var hash=window.location.hash.replace('#','').trim();
+  if(!hash){showError('Link inválido','Este link não contém um identificador válido.');return;}
+  var r=await sb.from('proposals').select('*').eq('hash',hash).maybeSingle();
+  if(r.error||!r.data){showError('Proposta não encontrada','Este link pode ter expirado. Entre em contato com seu assessor.');return;}
+  proposal=r.data;
+  isExpired=new Date(r.data.expires_at)<new Date();
+
+  // Detecta se é SDR (assessor logado que criou esta proposta)
+  var session=await sb.auth.getSession();
+  if(session.data&&session.data.session){
+    var uid=session.data.session.user.id;
+    if(uid===proposal.user_id) isSdr=true;
+  }
+
+  // Só marca como visualizada se não for SDR e status for enviada
+  if(!isSdr && r.data.status==='enviada'){
+    await sb.from('proposals').update({status:'visualizada',visualizado_em:new Date().toISOString()}).eq('hash',hash);
+    proposal.status='visualizada';
+  }
+  render();
+})();
+function showError(t,s){document.getElementById('loadingScreen').style.display='none';document.getElementById('errorScreen').style.display='flex';document.getElementById('errorTitle').textContent=t;document.getElementById('errorSub').textContent=s;}
+function setAccent(c){
+  document.documentElement.style.setProperty('--accent',c);
+  var h=c.replace('#','');
+  var rv=parseInt(h.slice(0,2),16),gv=parseInt(h.slice(2,4),16),bv=parseInt(h.slice(4,6),16);
+  document.documentElement.style.setProperty('--accent-rgb',rv+','+gv+','+bv);
+  document.documentElement.style.setProperty('--accent-dim','rgba('+rv+','+gv+','+bv+',.1)');
+  var lum=(rv*299+gv*587+bv*114)/1000;
+  document.documentElement.style.setProperty('--accent2',lum>128?darken(c,.15):lighten(c,.1));
+}
+function darken(hex,amt){var h=hex.replace('#','');var r=Math.max(0,parseInt(h.slice(0,2),16)-Math.round(255*amt));var g=Math.max(0,parseInt(h.slice(2,4),16)-Math.round(255*amt));var bv=Math.max(0,parseInt(h.slice(4,6),16)-Math.round(255*amt));return'#'+[r,g,bv].map(function(v){return v.toString(16).padStart(2,'0');}).join('');}
+function lighten(hex,amt){var h=hex.replace('#','');var r=Math.min(255,parseInt(h.slice(0,2),16)+Math.round(255*amt));var g=Math.min(255,parseInt(h.slice(2,4),16)+Math.round(255*amt));var bv=Math.min(255,parseInt(h.slice(4,6),16)+Math.round(255*amt));return'#'+[r,g,bv].map(function(v){return v.toString(16).padStart(2,'0');}).join('');}
+function render(){
+  document.getElementById('loadingScreen').style.display='none';
+  var p=proposal,emp=p.empresa_snapshot||{},ia=p.analise_ia||{};
+  var nomeEmp=emp.empresa_nome||'Captor Investimentos',cred=emp.empresa_credenciadora||'';
+  if(emp.brand_colors&&emp.brand_colors.length)setAccent(emp.brand_colors[0]);
+  document.getElementById('headerLogo').innerHTML=nomeEmp+'<span class="dot">.</span>';
+  document.getElementById('headerCompany').textContent=cred?nomeEmp+' · '+cred:nomeEmp;
+  renderStatusPill(p.status);
+  document.title='Proposta · '+p.cliente_nome+' · '+nomeEmp;
+
+  // Modo SDR — mostrar barra de aprovação
+  if(isSdr){
+    document.getElementById('sdrBar').style.display='block';
+    // Esconder footer de ações do cliente
+    document.querySelector('.prop-footer-sticky').style.display='none';
+    if(p.status==='aprovado_sdr'){
+      var btn=document.getElementById('sdrApproveBtn');
+      btn.textContent='✓ Já aprovado';
+      btn.className='sdr-approve-btn done';
+      document.getElementById('sdrHint').textContent='Esta proposta já foi aprovada e pode ser publicada no Captor.';
+    }
+  }
+  var now=new Date(),hour=now.getHours();
+  document.getElementById('heroGreeting').textContent=(hour<12?'Bom dia':hour<18?'Boa tarde':'Boa noite')+',';
+  document.getElementById('heroName').textContent=p.cliente_nome;
+  var patFmt=new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL',maximumFractionDigits:0}).format(p.cliente_pat);
+  document.getElementById('heroMeta').innerHTML=[{l:'Patrimônio',v:patFmt},{l:'Perfil',v:p.cliente_perfil},{l:'Objetivo',v:p.cliente_obj}].map(function(b){return '<span class="hero-badge"><strong>'+b.l+'</strong> '+b.v+'</span>';}).join('');
+  document.getElementById('heroSummary').textContent=ia.resumoPerfil||'';
+  var expDate=new Date(p.expires_at).toLocaleDateString('pt-BR');
+  var exEl=document.getElementById('heroExpires');
+  if(isExpired){exEl.textContent='⚠ Proposta expirada em '+expDate;exEl.classList.add('expired');document.getElementById('expiredBanner').style.display='flex';document.getElementById('btnAccept').textContent='🔄 Atualizar proposta';}
+  else exEl.textContent='⏱ Válida até '+expDate;
+  if(p.status==='aceita'){document.getElementById('footerLabel').textContent='✅ Proposta aceita!';document.getElementById('footerLabel').className='prop-footer-label done';document.getElementById('btnAccept').disabled=true;document.getElementById('btnAccept').style.opacity='.5';}
+  document.getElementById('profileGrid').innerHTML=[{l:'Patrimônio estimado',v:patFmt,hi:true},{l:'Perfil de risco',v:p.cliente_perfil,hi:true},{l:'Objetivo',v:p.cliente_obj},{l:'Profissão',v:p.cliente_prof},{l:'Idade',v:p.cliente_idade+' anos'},{l:'Assessoria atual',v:p.cliente_ass||'Não informado'}].map(function(d){return '<div class="profile-card'+(d.hi?' hi':'')+'"><div class="profile-card-label">'+d.l+'</div><div class="profile-card-value">'+d.v+'</div></div>';}).join('');
+  var hasAtual=p.alocacao_atual&&Object.values(p.alocacao_atual).some(function(v){return v>0;});
+  if(hasAtual){
+    document.getElementById('allocSub').textContent='Como recomendamos reorganizar seus investimentos';
+  }
+  if(p.alocacao_sugerida){
+    var cc=document.getElementById('chartCompare');
+    if(hasAtual){
+      cc.innerHTML='<div class="alloc-compare"><div><div class="alloc-box-title">Carteira atual</div><div id="dA2"></div></div><div><div class="alloc-box-title">Proposta sugerida</div><div id="dS"></div></div></div>';
+      renderDonut(document.getElementById('dA2'),{labels:Object.keys(p.alocacao_atual),data:Object.values(p.alocacao_atual)},emp.brand_colors);
+      renderDonut(document.getElementById('dS'),p.alocacao_sugerida,emp.brand_colors);
+    } else {
+      cc.innerHTML='<div class="alloc-compare single"><div id="dS2"></div></div>';
+      renderDonut(document.getElementById('dS2'),p.alocacao_sugerida,emp.brand_colors);
+    }
+  }
+  if(ia.argumentos&&ia.argumentos.length){
+    document.getElementById('benefitsList').innerHTML=ia.argumentos.map(function(a,i){
+      return '<div class="benefit-item"><div class="benefit-num">'+(i+1)+'</div><div class="benefit-body"><strong>'+a.titulo+'</strong><p>'+a.corpo+'</p>'+(a.frase_gancho?'<div class="benefit-hook">"'+a.frase_gancho+'"</div>':'')+'</div></div>';
+    }).join('');
+  }
+  renderLine(document.getElementById('chartProjecao'),p.cliente_pat,p.cliente_perfil,emp.brand_colors);
+  document.getElementById('contactCard').innerHTML='<div class="contact-avatar">'+nomeEmp.charAt(0).toUpperCase()+'</div><div><div class="contact-name">'+nomeEmp+'</div>'+(cred?'<div class="contact-role">Assessoria de Investimentos</div><div class="contact-company">'+cred+'</div>':'')+'</div>';
+  document.getElementById('legalCompany').textContent=nomeEmp+(cred?' · '+cred:'');
+  document.getElementById('legalDate').textContent=new Date(p.created_at).toLocaleDateString('pt-BR');
+  // Mostrar feedback só para clientes (não SDR) e se ainda não avaliou
+  if(!isSdr && !proposal.feedback_rating){
+    document.getElementById('feedbackSection').style.display='block';
+  }
+
+  document.getElementById('propContent').style.display='block';
+}
+
+// ── FEEDBACK ──
+var selectedRating = 0;
+function setRating(v){
+  selectedRating = v;
+  document.querySelectorAll('.star-btn').forEach(function(b){
+    b.classList.toggle('active', parseInt(b.dataset.v) <= v);
+  });
+  document.getElementById('feedbackSubmit').disabled = false;
+}
+async function submitFeedback(){
+  var btn = document.getElementById('feedbackSubmit');
+  btn.disabled = true; btn.textContent = 'Enviando...';
+  var texto = document.getElementById('feedbackText').value.trim();
+  await sb.from('proposals').update({
+    feedback_rating: selectedRating,
+    feedback_texto: texto || null,
+    feedback_em: new Date().toISOString()
+  }).eq('hash', proposal.hash);
+  btn.style.display = 'none';
+  document.getElementById('feedbackDone').style.display = 'block';
+  document.querySelectorAll('.star-btn').forEach(function(b){ b.disabled = true; });
+  document.getElementById('feedbackText').disabled = true;
+}
+function renderDonut(container,alloc,bc){
+  var def=['#a8c23a','#7a9a22','#4a6a0a','#c8e050','#ddf070','#e8f590','#5a8a10','#b0d030','#90b820'];
+  var colors=def.map(function(d,i){return(bc&&bc[i])?bc[i]:d;});
+  var total=alloc.data.reduce(function(a,b){return a+b;},0);
+  if(!total){container.innerHTML='<p style="color:var(--muted);font-size:.8rem;text-align:center;padding:20px">Sem dados.</p>';return;}
+  var cx=110,cy=100,r=72,ri=46,angle=-Math.PI/2,slices='',legend='';
+  var nonZero=alloc.data.filter(function(v){return v>0;}).length;
+  alloc.data.forEach(function(val,i){
+    if(!val)return;
+    var a=(val/total)*2*Math.PI;
+    if(nonZero===1){
+      slices+='<circle cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="'+colors[i]+'"/>'
+             +'<circle cx="'+cx+'" cy="'+cy+'" r="'+ri+'" fill="white"/>';
+    } else {
+      var x1=cx+r*Math.cos(angle),y1=cy+r*Math.sin(angle),x2=cx+r*Math.cos(angle+a),y2=cy+r*Math.sin(angle+a),xi1=cx+ri*Math.cos(angle),yi1=cy+ri*Math.sin(angle),xi2=cx+ri*Math.cos(angle+a),yi2=cy+ri*Math.sin(angle+a),lg=a>Math.PI?1:0;
+      slices+='<path d="M'+xi1+' '+yi1+' L'+x1+' '+y1+' A'+r+' '+r+' 0 '+lg+' 1 '+x2+' '+y2+' L'+xi2+' '+yi2+' A'+ri+' '+ri+' 0 '+lg+' 0 '+xi1+' '+yi1+' Z" fill="'+colors[i]+'"/>';
+    }
+    angle+=a;
+  });
+  var li=0;
+  alloc.labels.forEach(function(lbl,i){
+    if(!alloc.data[i])return;
+    var y=210+li*18;li++;
+    legend+='<rect x="4" y="'+(y-8)+'" width="10" height="10" rx="2" fill="'+colors[i]+'"/><text x="18" y="'+y+'" fill="#6b7280" font-size="10" font-family="system-ui">'+lbl+' ('+alloc.data[i]+'%)</text>';
+  });
+  var lh=210+li*18;
+  container.innerHTML='<svg viewBox="0 0 220 '+(lh+10)+'" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:240px;display:block;margin:0 auto">'+slices+'<circle cx="110" cy="100" r="30" fill="white"/>'+legend+'</svg>';
+}
+function renderLine(container,pat,perfil,bc){
+  var rates={Conservador:.10,Moderado:.13,Arrojado:.16,Agressivo:.19};
+  var r=rates[perfil]||.13,rm=Math.pow(1+r,1/12)-1;
+  var comV=[];for(var i=0;i<=10;i++)comV.push(Math.round(pat*Math.pow(1+r,i)));
+  var W=340,H=170,pL=72,pB=22,pT=28,pR=28,maxV=Math.max.apply(null,comV),minV=comV[0];
+  function px(i){return pL+(i/10)*(W-pL-pR);}
+  function py(v){return pT+(H-pT-pB)*(1-(v-minV)/(maxV-minV));}
+  var path1='M'+comV.map(function(v,i){return px(i)+' '+py(v);}).join(' L');
+  var area1='M'+px(0)+' '+py(comV[0])+' '+comV.map(function(v,i){return 'L'+px(i)+' '+py(v);}).join(' ')+' L'+px(10)+' '+(H-pB)+' L'+pL+' '+(H-pB)+' Z';
+  var ac=(bc&&bc[0])||'#a8c23a',ah=ac.replace('#','');
+  var ar=parseInt(ah.slice(0,2),16),ag=parseInt(ah.slice(2,4),16),ab=parseInt(ah.slice(4,6),16);
+  var yl='';[0,.5,1].forEach(function(f){var v=Math.round(minV+f*(maxV-minV)),y=py(v),l='R$ '+new Intl.NumberFormat('pt-BR',{notation:'compact',maximumFractionDigits:1}).format(v);yl+='<text x="'+(pL-5)+'" y="'+(y+4)+'" text-anchor="end" fill="#9ca3af" font-size="9" font-family="system-ui">'+l+'</text><line x1="'+pL+'" y1="'+y+'" x2="'+(W-pR)+'" y2="'+y+'" stroke="#e8eaed" stroke-width="1"/>';});
+  var xl='';[0,2,4,6,8,10].forEach(function(i){xl+='<text x="'+px(i)+'" y="'+(H-pB+14)+'" text-anchor="middle" fill="#9ca3af" font-size="9" font-family="system-ui">'+(i===0?'Hoje':'Ano '+i)+'</text>';});
+  var lx=px(10),ly=py(comV[10]),ll='R$ '+new Intl.NumberFormat('pt-BR',{notation:'compact',maximumFractionDigits:1}).format(comV[10]);
+  var labelX=lx,labelY=Math.max(ly-10,pT-2),labelAnchor='end';
+  container.innerHTML='<svg viewBox="0 0 '+W+' '+H+'" xmlns="http://www.w3.org/2000/svg" style="width:100%;display:block"><path d="'+area1+'" fill="rgba('+ar+','+ag+','+ab+',.08)"/><path d="'+path1+'" fill="none" stroke="'+ac+'" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/><circle cx="'+lx+'" cy="'+ly+'" r="4" fill="'+ac+'"/><text x="'+labelX+'" y="'+labelY+'" text-anchor="'+labelAnchor+'" fill="'+ac+'" font-size="10" font-weight="bold" font-family="system-ui">'+ll+'</text>'+yl+xl+'</svg><div style="margin-top:10px;font-size:.74rem;color:var(--muted);display:flex;gap:16px;flex-wrap:wrap"><span>📈 Taxa anual: <strong style="color:var(--text)">'+((r*100).toFixed(0))+'%</strong></span><span>📅 Mensal: <strong style="color:var(--text)">+'+(rm*100).toFixed(2).replace('.',',')+'%</strong></span></div><p style="margin-top:6px;font-size:.68rem;color:var(--dim)">⚠ Projeção estimada com base no perfil '+perfil+'. Rentabilidade passada não garante resultados futuros.</p>';
+}
+function toggleComment(id){document.getElementById(id).classList.toggle('open');}
+async function sendComment(section,btn){
+  var wrap=btn.closest('.comment-area'),input=wrap.querySelector('.comment-input'),text=input.value.trim();
+  if(!text)return;
+  btn.disabled=true;btn.textContent='Enviando...';
+  var c=Array.isArray(proposal.comentarios)?proposal.comentarios:[];
+  c.push({secao:section,texto:text,enviado_em:new Date().toISOString()});
+  await sb.from('proposals').update({comentarios:c}).eq('hash',proposal.hash);
+  proposal.comentarios=c;
+  btn.style.display='none';wrap.querySelector('.comment-sent').style.display='block';input.value='';
+}
+var actionConfig={aceita:{icon:'✅',title:'Aceitar esta proposta',sub:'Ótimo! Deixe uma mensagem opcional para seu assessor.',ph:'Mensagem opcional...'},detalhes_solicitados:{icon:'💬',title:'Enviar uma dúvida',sub:'Sobre o que você gostaria de saber mais?',ph:'Ex: Gostaria de entender melhor como funciona a renda variável nesta proposta...'}};
+function handleAction(action){
+  currentAction=action;var c=actionConfig[action];
+  document.getElementById('modalIcon').textContent=c.icon;
+  document.getElementById('modalTitle').textContent=c.title;
+  document.getElementById('modalSub').textContent=c.sub;
+  document.getElementById('modalText').placeholder=c.ph;
+  document.getElementById('modalText').value='';
+  document.getElementById('actionModal').style.display='flex';
+}
+function closeActionModal(){document.getElementById('actionModal').style.display='none';currentAction=null;}
+async function confirmAction(){
+  if(!currentAction)return;
+  var btn=document.getElementById('modalConfirm');btn.disabled=true;btn.textContent='Salvando...';
+  var msg=document.getElementById('modalText').value.trim();
+  await sb.from('proposals').update({status:currentAction,acao_cliente:currentAction,mensagem_cliente:msg,respondido_em:new Date().toISOString()}).eq('hash',proposal.hash);
+  proposal.status=currentAction;renderStatusPill(currentAction);closeActionModal();
+  var labels={aceita:'✅ Proposta aceita — seu assessor entrará em contato!',em_discussao:'💬 Mensagem enviada! Seu assessor responderá em breve.',detalhes_solicitados:'📋 Solicitação enviada! Aguarde o retorno.'};
+  var lbl=document.getElementById('footerLabel');lbl.textContent=labels[currentAction];lbl.className='prop-footer-label done';
+  if(currentAction==='aceita'){document.getElementById('btnAccept').disabled=true;document.getElementById('btnAccept').style.opacity='.5';}
+  btn.disabled=false;btn.textContent='Confirmar';
+}
+async function sdrApprove(){
+  var btn=document.getElementById('sdrApproveBtn');
+  btn.disabled=true;btn.textContent='Aprovando...';
+  var {error}=await sb.from('proposals').update({status:'aprovado_sdr'}).eq('hash',proposal.hash);
+  if(error){alert('Erro ao aprovar: '+error.message);btn.disabled=false;btn.textContent='✓ Aprovar proposta';return;}
+  proposal.status='aprovado_sdr';
+  renderStatusPill('aprovado_sdr');
+  btn.textContent='✓ Aprovado!';
+  btn.className='sdr-approve-btn done';
+  document.getElementById('sdrHint').textContent='✅ Aprovado! Esta aba vai fechar em 3 segundos...';
+  setTimeout(function(){
+    window.close();
+    // Fallback se o browser bloquear window.close()
+    document.getElementById('sdrHint').textContent='✅ Aprovado! Volte ao Captor e clique em Publicar para enviar ao cliente.';
+  }, 3000);
+}
+function shareProposal(){var url=window.location.href;if(navigator.share)navigator.share({title:'Minha Proposta de Investimento',url:url});else navigator.clipboard.writeText(url).then(function(){alert('Link copiado!');});}
+</script>
+<!-- ╔══════════════════════════════════════════════════════╗
+     ║                    CHANGELOG                         ║
+     ╠══════════════════════════════════════════════════════╣
+     ║ v5.3.1 — Fix gráfico projeção: pT=28 evita corte label  ║
+     ╠══════════════════════════════════════════════════════╣
+     ║ v5.2.4 — Fix label cortado no gráfico de projeção      ║
+     ║          Removido badge "Modo SDR"                      ║
+     ║          "Abertura e rapport" → "Abertura"              ║
+     ╠══════════════════════════════════════════════════════╣
+     ║ v5.2.3 — Fix donut 100%: anel completo p/ slice único║
+     ║          Versão no <title> e footer legal            ║
+     ║          "Seu Perfil" → "Perfil e Objetivos do       ║
+     ║          cliente"                                     ║
+     ╚══════════════════════════════════════════════════════╝ -->
+</body>
+</html>
